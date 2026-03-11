@@ -183,4 +183,133 @@
                             <div class="spec-item">
                                 <i class="fas fa-cog"></i>
                                 <span>${car.transmission}</span>
-                            </
+                            </div>
+                            <div class="spec-item">
+                                <i class="fas fa-gas-pump"></i>
+                                <span>${car.fuelType}</span>
+                            </div>
+                        </div>
+
+                        <div class="detailed-specs">
+                            <h3>Vehicle Specifications</h3>
+                            <table class="specs-table">
+                                <tr>
+                                    <td>Make</td>
+                                    <td><strong>${car.make}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Model</td>
+                                    <td><strong>${car.model}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Year</td>
+                                    <td><strong>${car.year}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Mileage</td>
+                                    <td><strong>${car.mileage?.toLocaleString()} km</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Engine</td>
+                                    <td><strong>${car.engine || 'N/A'}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Transmission</td>
+                                    <td><strong>${car.transmission}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Fuel Type</td>
+                                    <td><strong>${car.fuelType}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Steering</td>
+                                    <td><strong>${car.steering || 'Right Hand'}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <div class="vehicle-description">
+                            <h3>Description</h3>
+                            <p>${car.description || 'No description available.'}</p>
+                        </div>
+
+                        <div class="contact-actions">
+                            <h3>Interested in this vehicle?</h3>
+                            <div class="contact-buttons-large">
+                                <a href="https://wa.me/923357574906?text=I'm%20interested%20in%20${car.make}%20${car.model}%20(${car.year})%20-%20$${car.price}" 
+                                   target="_blank" class="btn-whatsapp-large">
+                                    <i class="fab fa-whatsapp"></i> Contact via WhatsApp
+                                </a>
+                                <a href="mailto:veltrixaauto@gmail.com?subject=Inquiry%20about%20${car.make}%20${car.model}%20${car.year}&body=I'm%20interested%20in%20the%20${car.make}%20${car.model}%20${car.year}%20listed%20for%20$${car.price}.%20Please%20provide%20more%20information." 
+                                   class="btn-email-large">
+                                    <i class="fas fa-envelope"></i> Send Email Inquiry
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('vehicle-details-container').innerHTML = html;
+        }
+
+        window.changeMainImage = function(imageUrl) {
+            document.getElementById('main-car-image').src = imageUrl;
+        };
+
+        function loadSimilarVehicles(make, price) {
+            db.collection("cars")
+                .where("make", "==", make)
+                .limit(4)
+                .get()
+                .then((querySnapshot) => {
+                    let html = '';
+                    querySnapshot.forEach((doc) => {
+                        if (doc.id !== vehicleId) { // Don't show current vehicle
+                            const car = doc.data();
+                            html += createSimilarCarCard(doc.id, car);
+                        }
+                    });
+                    
+                    if (html === '') {
+                        html = '<p class="no-results">No similar vehicles found</p>';
+                    }
+                    
+                    document.getElementById('similar-vehicles').innerHTML = html;
+                })
+                .catch(error => {
+                    console.error("Error loading similar vehicles: ", error);
+                });
+        }
+
+        function createSimilarCarCard(id, car) {
+            return `
+                <div class="car-card" onclick="viewCarDetails('${id}')">
+                    <div class="car-image">
+                        <img src="${car.images && car.images[0] ? car.images[0] : 'https://via.placeholder.com/300x200?text=No+Image'}" 
+                             alt="${car.make} ${car.model}">
+                    </div>
+                    <div class="car-info">
+                        <h3>${car.make} ${car.model}</h3>
+                        <div class="car-specs">
+                            <span><i class="fas fa-calendar"></i> ${car.year}</span>
+                        </div>
+                        <div class="price-section">
+                            <span class="current-price">$${car.price?.toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.viewCarDetails = function(id) {
+            window.location.href = `car-details.html?id=${id}`;
+        };
+
+        // Mobile menu toggle
+        document.querySelector('.mobile-menu-btn').addEventListener('click', function() {
+            document.querySelector('.nav-menu').classList.toggle('show');
+        });
+    </script>
+</body>
+</html>
