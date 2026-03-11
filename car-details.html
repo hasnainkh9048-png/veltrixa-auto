@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Details - Veltrixa Auto</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="images/VeltrixaAuto_Logo.png" alt="Veltrixa Auto Logo" class="logo">
+            <div class="logo-text">
+                <h1>VELTRIXA AUTO</h1>
+                <p class="tagline">Your Gateway to Japanese Vehicles</p>
+            </div>
+        </div>
+        <nav>
+            <div class="mobile-menu-btn">
+                <i class="fas fa-bars"></i>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="cars.html">Stock List</a></li>
+                <li><a href="how-to-buy.html">How to Buy</a></li>
+                <li><a href="about.html">About Us</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+        <div class="container">
+            <a href="index.html">Home</a> &gt; 
+            <a href="cars.html">Stock List</a> &gt; 
+            <span id="breadcrumb-vehicle">Vehicle Details</span>
+        </div>
+    </div>
+
+    <!-- Vehicle Details Container -->
+    <section class="vehicle-details">
+        <div class="container">
+            <div id="vehicle-details-container">
+                <!-- Details will be loaded here -->
+                <div class="loading">Loading vehicle details...</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Similar Vehicles -->
+    <section class="similar-vehicles">
+        <div class="container">
+            <h2 class="section-title">Similar Vehicles</h2>
+            <div class="car-grid" id="similar-vehicles">
+                <!-- Similar vehicles will be loaded here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Veltrixa Auto</h3>
+                <p>Your trusted partner for quality Japanese vehicles since 2024.</p>
+                <div class="contact-info">
+                    <p><i class="fas fa-envelope"></i> veltrixaauto@gmail.com</p>
+                    <p><i class="fab fa-whatsapp"></i> +92 3357574906</p>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <ul>
+                    <li><a href="about.html">About Us</a></li>
+                    <li><a href="how-to-buy.html">How to Buy</a></li>
+                    <li><a href="cars.html">Vehicle Stock</a></li>
+                    <li><a href="contact.html">Contact Us</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Popular Makes</h3>
+                <ul>
+                    <li><a href="cars.html?make=Toyota">Toyota</a></li>
+                    <li><a href="cars.html?make=Honda">Honda</a></li>
+                    <li><a href="cars.html?make=Nissan">Nissan</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>Developed by Sivexo Solutions</p>
+        </div>
+    </footer>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "YOUR-API-KEY",
+            authDomain: "YOUR-AUTH-DOMAIN",
+            projectId: "YOUR-PROJECT-ID",
+            storageBucket: "YOUR-STORAGE-BUCKET",
+            messagingSenderId: "YOUR-SENDER-ID",
+            appId: "YOUR-APP-ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Get vehicle ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const vehicleId = urlParams.get('id');
+
+        if (vehicleId) {
+            // Load vehicle details
+            db.collection("cars").doc(vehicleId).get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        const car = doc.data();
+                        displayVehicleDetails(car);
+                        document.getElementById('breadcrumb-vehicle').textContent = 
+                            `${car.make} ${car.model} ${car.year}`;
+                        
+                        // Load similar vehicles
+                        loadSimilarVehicles(car.make, car.price);
+                    } else {
+                        document.getElementById('vehicle-details-container').innerHTML = 
+                            '<p class="error">Vehicle not found</p>';
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error loading vehicle: ", error);
+                    document.getElementById('vehicle-details-container').innerHTML = 
+                        '<p class="error">Error loading vehicle details</p>';
+                });
+        } else {
+            window.location.href = 'cars.html';
+        }
+
+        function displayVehicleDetails(car) {
+            const discountHtml = car.discount ? 
+                `<div class="discount-info">
+                    <span class="old-price">$${car.oldPrice?.toLocaleString()}</span>
+                    <span class="discount-badge-large">-${car.discount}% OFF</span>
+                </div>` : '';
+
+            const mainImage = car.images && car.images[0] ? 
+                car.images[0] : 'https://via.placeholder.com/800x500?text=No+Image';
+
+            const thumbnailImages = car.images ? 
+                car.images.slice(0, 4).map((img, index) => 
+                    `<img src="${img}" alt="Thumbnail ${index + 1}" onclick="changeMainImage('${img}')">`
+                ).join('') : '';
+
+            const html = `
+                <div class="vehicle-details-grid">
+                    <div class="vehicle-gallery">
+                        <div class="main-image">
+                            <img src="${mainImage}" alt="${car.make} ${car.model}" id="main-car-image">
+                        </div>
+                        <div class="thumbnail-images">
+                            ${thumbnailImages}
+                        </div>
+                    </div>
+                    <div class="vehicle-info">
+                        <h1>${car.make} ${car.model} ${car.year}</h1>
+                        ${discountHtml}
+                        <div class="current-price-large">$${car.price?.toLocaleString()}</div>
+                        
+                        <div class="key-specs">
+                            <div class="spec-item">
+                                <i class="fas fa-calendar"></i>
+                                <span>${car.year}</span>
+                            </div>
+                            <div class="spec-item">
+                                <i class="fas fa-tachometer-alt"></i>
+                                <span>${car.mileage?.toLocaleString()} km</span>
+                            </div>
+                            <div class="spec-item">
+                                <i class="fas fa-cog"></i>
+                                <span>${car.transmission}</span>
+                            </
