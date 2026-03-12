@@ -9,6 +9,27 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="js/firebase-config.js"></script>
+    <style>
+        .product-id-badge {
+            background: #4CAF50;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .video-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .video-gallery video {
+            width: 100%;
+            border-radius: 8px;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -92,6 +113,7 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const vehicleId = urlParams.get('id');
+        const siteUrl = window.location.origin + window.location.pathname.replace('car-details.html', '');
 
         document.addEventListener('DOMContentLoaded', function() {
             if (!vehicleId) {
@@ -108,7 +130,7 @@
                 .then((doc) => {
                     if (doc.exists) {
                         const car = doc.data();
-                        displayVehicleDetails(car);
+                        displayVehicleDetails(car, vehicleId);
                         document.getElementById('breadcrumb-vehicle').textContent = `${car.make} ${car.model} ${car.year}`;
                         loadSimilarVehicles(car.make, car.price);
                     } else {
@@ -120,21 +142,36 @@
                 });
         });
 
-        function displayVehicleDetails(car) {
+        function displayVehicleDetails(car, id) {
+            const productUrl = `${window.location.origin}/veltrixa-auto/car-details.html?id=${id}`;
             const discountHtml = car.discount ? 
                 `<div class="discount-info"><span class="old-price">$${car.oldPrice?.toLocaleString()}</span><span class="discount-badge-large">-${car.discount}% OFF</span></div>` : '';
 
             const mainImage = car.images && car.images[0] ? car.images[0] : 'https://via.placeholder.com/800x500?text=No+Image';
+            
+            // Image thumbnails
             const thumbnailImages = car.images ? car.images.slice(0, 4).map((img, index) => 
                 `<img src="${img}" alt="Thumbnail ${index + 1}" onclick="changeMainImage('${img}')">`).join('') : '';
+
+            // Video gallery
+            const videoHtml = car.videos && car.videos.length > 0 ? `
+                <div class="video-gallery">
+                    <h3>Videos</h3>
+                    ${car.videos.map(video => `
+                        <video src="${video}" controls preload="metadata"></video>
+                    `).join('')}
+                </div>
+            ` : '';
 
             const html = `
                 <div class="vehicle-details-grid">
                     <div class="vehicle-gallery">
+                        <div class="product-id-badge">Product ID: ${car.productId || 'N/A'}</div>
                         <div class="main-image">
                             <img src="${mainImage}" alt="${car.make} ${car.model}" id="main-car-image">
                         </div>
                         <div class="thumbnail-images">${thumbnailImages}</div>
+                        ${videoHtml}
                     </div>
                     <div class="vehicle-info">
                         <h1>${car.make} ${car.model} ${car.year}</h1>
@@ -151,6 +188,7 @@
                         <div class="detailed-specs">
                             <h3>Vehicle Specifications</h3>
                             <table class="specs-table">
+                                <tr><td>Product ID</td><td><strong>${car.productId || 'N/A'}</strong></td></tr>
                                 <tr><td>Make</td><td><strong>${car.make}</strong></td></tr>
                                 <tr><td>Model</td><td><strong>${car.model}</strong></td></tr>
                                 <tr><td>Year</td><td><strong>${car.year}</strong></td></tr>
@@ -170,15 +208,29 @@
                         <div class="contact-actions">
                             <h3>Interested in this vehicle?</h3>
                             <div class="contact-buttons-large">
-                                <a href="https://wa.me/923357574906?text=I'm%20interested%20in%20${car.make}%20${car.model}%20(${car.year})%20-%20$${car.price}" target="_blank" class="btn-whatsapp-large"><i class="fab fa-whatsapp"></i> Contact via WhatsApp</a>
-                                <a href="mailto:veltrixaauto@gmail.com?subject=Inquiry%20about%20${car.make}%20${car.model}%20${car.year}&body=I'm%20interested%20in%20the%20${car.make}%20${car.model}%20${car.year}%20listed%20for%20$${car.price}.%20Please%20provide%20more%20information." class="btn-email-large"><i class="fas fa-envelope"></i> Send Email Inquiry</a>
+                                <a href="https://wa.me/923357574906?text=I'm%20interested%20in%20${car.make}%20${car.model}%20(${car.year})%0A%0AProduct%20ID:%20${car.productId || 'N/A'}%0AProduct%20Link:%20${encodeURIComponent(productUrl)}%0APrice:%20$${car.price}" 
+                                   target="_blank" class="btn-whatsapp-large" onclick="trackWhatsAppClick('${car.productId}')">
+                                    <i class="fab fa-whatsapp"></i> Contact via WhatsApp
+                                </a>
+                                <a href="mailto:veltrixaauto@gmail.com?subject=Inquiry%20about%20${car.make}%20${car.model}%20${car.year}&body=I'm%20interested%20in%20the%20${car.make}%20${car.model}%20${car.year}%0A%0AProduct%20ID:%20${car.productId || 'N/A'}%0AProduct%20Link:%20${productUrl}%0APrice:%20$${car.price}%0A%0APlease%20provide%20more%20information." 
+                                   class="btn-email-large">
+                                    <i class="fas fa-envelope"></i> Send Email Inquiry
+                                </a>
                             </div>
+                            <p style="margin-top: 10px; color: #666; font-size: 0.9rem;">
+                                <i class="fas fa-info-circle"></i> When you contact us, the product link will be automatically included so we can assist you better.
+                            </p>
                         </div>
                     </div>
                 </div>
             `;
 
             document.getElementById('vehicle-details-container').innerHTML = html;
+        }
+
+        function trackWhatsAppClick(productId) {
+            console.log(`WhatsApp inquiry for product: ${productId}`);
+            // You can add analytics tracking here if needed
         }
 
         window.changeMainImage = function(imageUrl) {
