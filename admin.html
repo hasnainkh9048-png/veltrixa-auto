@@ -7,9 +7,132 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="js/firebase-config.js"></script>
+    <style>
+        .upload-progress {
+            width: 100%;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: none;
+        }
+        .progress-bar {
+            height: 20px;
+            background: #4CAF50;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            line-height: 20px;
+        }
+        .image-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .preview-item {
+            position: relative;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        .preview-item img {
+            width: 100%;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .preview-item .remove-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .video-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .video-item {
+            position: relative;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        .video-item video {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+        }
+        .file-input-group {
+            border: 2px dashed #c71e1e;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            margin: 15px 0;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .file-input-group:hover {
+            background: #fff5f5;
+        }
+        .file-input-group i {
+            font-size: 40px;
+            color: #c71e1e;
+            margin-bottom: 10px;
+        }
+        .limit-info {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        .export-btn {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-left: 10px;
+        }
+        .export-btn:hover {
+            background: #45a049;
+        }
+        .product-id {
+            background: #e8f5e9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4CAF50;
+        }
+        .product-id strong {
+            color: #2e7d32;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -66,6 +189,7 @@
         <div class="container">
             <div class="admin-actions">
                 <button onclick="showAddForm()" class="btn-primary"><i class="fas fa-plus"></i> Add New Vehicle</button>
+                <button onclick="exportToExcel()" class="export-btn"><i class="fas fa-file-excel"></i> Export to Excel</button>
             </div>
 
             <div id="car-form-container" class="admin-form" style="display: none;">
@@ -73,10 +197,15 @@
                 <form id="car-form" onsubmit="saveCar(event)">
                     <input type="hidden" id="car-id">
                     
+                    <!-- Auto-generated Product ID Display -->
+                    <div class="product-id" id="product-id-display">
+                        <strong>Product ID:</strong> <span id="generated-id">Will be auto-generated</span>
+                    </div>
+                    
                     <div class="form-row">
                         <div class="form-group">
                             <label>Make *</label>
-                            <select id="make" required>
+                            <select id="make" required onchange="generateProductId()">
                                 <option value="">Select Make</option>
                                 <option value="Toyota">Toyota</option>
                                 <option value="Honda">Honda</option>
@@ -90,14 +219,14 @@
                         </div>
                         <div class="form-group">
                             <label>Model *</label>
-                            <input type="text" id="model" required placeholder="e.g., Land Cruiser">
+                            <input type="text" id="model" required placeholder="e.g., Land Cruiser" onchange="generateProductId()">
                         </div>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
                             <label>Year *</label>
-                            <input type="number" id="year" min="1990" max="2026" required>
+                            <input type="number" id="year" min="1990" max="2026" required onchange="generateProductId()">
                         </div>
                         <div class="form-group">
                             <label>Price (USD) *</label>
@@ -154,9 +283,36 @@
                         <textarea id="description" rows="4" placeholder="Enter vehicle description..."></textarea>
                     </div>
 
+                    <!-- Image Upload Section -->
                     <div class="form-group">
-                        <label>Image URLs (one per line)</label>
-                        <textarea id="images" rows="3" placeholder="https://example.com/image1.jpg"></textarea>
+                        <label>Images (Max 15)</label>
+                        <div class="file-input-group" onclick="document.getElementById('image-input').click()">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Click to upload images or drag and drop</p>
+                            <p class="limit-info">Supported: JPG, PNG, GIF (Max 5MB each)</p>
+                        </div>
+                        <input type="file" id="image-input" accept="image/*" multiple style="display: none;" onchange="handleImageSelect(event)">
+                        <div class="upload-progress" id="image-progress">
+                            <div class="progress-bar" id="image-progress-bar">0%</div>
+                        </div>
+                        <div class="image-preview" id="image-preview"></div>
+                        <input type="hidden" id="image-urls">
+                    </div>
+
+                    <!-- Video Upload Section -->
+                    <div class="form-group">
+                        <label>Videos (Max 3)</label>
+                        <div class="file-input-group" onclick="document.getElementById('video-input').click()">
+                            <i class="fas fa-video"></i>
+                            <p>Click to upload videos</p>
+                            <p class="limit-info">Supported: MP4, WebM (Max 20MB each)</p>
+                        </div>
+                        <input type="file" id="video-input" accept="video/*" multiple style="display: none;" onchange="handleVideoSelect(event)">
+                        <div class="upload-progress" id="video-progress">
+                            <div class="progress-bar" id="video-progress-bar">0%</div>
+                        </div>
+                        <div class="video-preview" id="video-preview"></div>
+                        <input type="hidden" id="video-urls">
                     </div>
 
                     <div class="form-checkbox">
@@ -200,7 +356,296 @@
 
     <script>
         let currentUser = null;
+        let selectedImages = [];
+        let selectedVideos = [];
+        let uploadedImageUrls = [];
+        let uploadedVideoUrls = [];
 
+        // Generate unique product ID
+        function generateProductId() {
+            const make = document.getElementById('make').value;
+            const model = document.getElementById('model').value;
+            const year = document.getElementById('year').value;
+            
+            if (make && model && year) {
+                // Format: VEL-YYYY-XXXX (where XXXX is random number)
+                const randomNum = Math.floor(1000 + Math.random() * 9000);
+                const productId = `VEL-${year}-${randomNum}`;
+                document.getElementById('generated-id').textContent = productId;
+                return productId;
+            }
+            return '';
+        }
+
+        // Handle image selection
+        window.handleImageSelect = function(event) {
+            const files = Array.from(event.target.files);
+            const totalImages = selectedImages.length + files.length;
+            
+            if (totalImages > 15) {
+                alert(`You can only upload up to 15 images. You already have ${selectedImages.length} images selected.`);
+                return;
+            }
+
+            // Show progress bar
+            document.getElementById('image-progress').style.display = 'block';
+            
+            files.forEach((file, index) => {
+                if (file.size > 5 * 1024 * 1024) {
+                    alert(`File ${file.name} is too large. Maximum size is 5MB.`);
+                    return;
+                }
+
+                // Create preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    selectedImages.push({
+                        file: file,
+                        preview: e.target.result
+                    });
+                    updateImagePreview();
+                };
+                reader.readAsDataURL(file);
+            });
+        };
+
+        // Update image preview
+        function updateImagePreview() {
+            const preview = document.getElementById('image-preview');
+            preview.innerHTML = '';
+            
+            selectedImages.forEach((img, index) => {
+                const item = document.createElement('div');
+                item.className = 'preview-item';
+                item.innerHTML = `
+                    <img src="${img.preview}" alt="Preview ${index + 1}">
+                    <button type="button" class="remove-btn" onclick="removeImage(${index})">×</button>
+                `;
+                preview.appendChild(item);
+            });
+        }
+
+        // Remove image
+        window.removeImage = function(index) {
+            selectedImages.splice(index, 1);
+            updateImagePreview();
+        };
+
+        // Handle video selection
+        window.handleVideoSelect = function(event) {
+            const files = Array.from(event.target.files);
+            const totalVideos = selectedVideos.length + files.length;
+            
+            if (totalVideos > 3) {
+                alert(`You can only upload up to 3 videos. You already have ${selectedVideos.length} videos selected.`);
+                return;
+            }
+
+            files.forEach((file) => {
+                if (file.size > 20 * 1024 * 1024) {
+                    alert(`File ${file.name} is too large. Maximum size is 20MB.`);
+                    return;
+                }
+
+                // Create preview URL
+                const url = URL.createObjectURL(file);
+                selectedVideos.push({
+                    file: file,
+                    preview: url
+                });
+            });
+            updateVideoPreview();
+        };
+
+        // Update video preview
+        function updateVideoPreview() {
+            const preview = document.getElementById('video-preview');
+            preview.innerHTML = '';
+            
+            selectedVideos.forEach((video, index) => {
+                const item = document.createElement('div');
+                item.className = 'video-item';
+                item.innerHTML = `
+                    <video src="${video.preview}" controls></video>
+                    <button type="button" class="remove-btn" onclick="removeVideo(${index})">×</button>
+                `;
+                preview.appendChild(item);
+            });
+        }
+
+        // Remove video
+        window.removeVideo = function(index) {
+            selectedVideos.splice(index, 1);
+            updateVideoPreview();
+        };
+
+        // Upload files to Firebase Storage
+        async function uploadFiles() {
+            uploadedImageUrls = [];
+            uploadedVideoUrls = [];
+            
+            // Upload images
+            if (selectedImages.length > 0) {
+                document.getElementById('image-progress').style.display = 'block';
+                const imageBar = document.getElementById('image-progress-bar');
+                
+                for (let i = 0; i < selectedImages.length; i++) {
+                    const file = selectedImages[i].file;
+                    const fileName = `${Date.now()}_${file.name}`;
+                    const storageRef = storage.ref(`vehicles/images/${fileName}`);
+                    
+                    await storageRef.put(file);
+                    const url = await storageRef.getDownloadURL();
+                    uploadedImageUrls.push(url);
+                    
+                    // Update progress
+                    const progress = Math.round(((i + 1) / selectedImages.length) * 100);
+                    imageBar.style.width = progress + '%';
+                    imageBar.textContent = progress + '%';
+                }
+            }
+            
+            // Upload videos
+            if (selectedVideos.length > 0) {
+                document.getElementById('video-progress').style.display = 'block';
+                const videoBar = document.getElementById('video-progress-bar');
+                
+                for (let i = 0; i < selectedVideos.length; i++) {
+                    const file = selectedVideos[i].file;
+                    const fileName = `${Date.now()}_${file.name}`;
+                    const storageRef = storage.ref(`vehicles/videos/${fileName}`);
+                    
+                    await storageRef.put(file);
+                    const url = await storageRef.getDownloadURL();
+                    uploadedVideoUrls.push(url);
+                    
+                    // Update progress
+                    const progress = Math.round(((i + 1) / selectedVideos.length) * 100);
+                    videoBar.style.width = progress + '%';
+                    videoBar.textContent = progress + '%';
+                }
+            }
+        }
+
+        // Save car
+        window.saveCar = async function(event) {
+            event.preventDefault();
+            
+            // Upload files first
+            await uploadFiles();
+            
+            const carId = document.getElementById('car-id').value;
+            const productId = generateProductId();
+            const price = parseInt(document.getElementById('price').value);
+            const oldPrice = parseInt(document.getElementById('old-price').value) || null;
+            const discount = oldPrice ? Math.round(((oldPrice - price) / oldPrice) * 100) : null;
+
+            const carData = {
+                productId: productId,
+                make: document.getElementById('make').value,
+                model: document.getElementById('model').value,
+                year: parseInt(document.getElementById('year').value),
+                price: price,
+                oldPrice: oldPrice,
+                discount: discount,
+                mileage: parseInt(document.getElementById('mileage').value),
+                engine: document.getElementById('engine').value,
+                transmission: document.getElementById('transmission').value,
+                fuelType: document.getElementById('fuel-type').value,
+                steering: document.getElementById('steering').value,
+                description: document.getElementById('description').value,
+                images: uploadedImageUrls,
+                videos: uploadedVideoUrls,
+                featured: document.getElementById('featured').checked,
+                productUrl: `https://${window.location.host}/veltrixa-auto/car-details.html?id=`,
+                updatedAt: new Date()
+            };
+
+            if (carId) {
+                await db.collection("cars").doc(carId).update(carData);
+                alert('Vehicle updated successfully!');
+            } else {
+                carData.createdAt = new Date();
+                const docRef = await db.collection("cars").add(carData);
+                carData.productUrl += docRef.id;
+                await db.collection("cars").doc(docRef.id).update({ productUrl: carData.productUrl });
+                alert('Vehicle added successfully!');
+            }
+            
+            hideForm();
+            loadInventory();
+            loadStats();
+            
+            // Clear file selections
+            selectedImages = [];
+            selectedVideos = [];
+            uploadedImageUrls = [];
+            uploadedVideoUrls = [];
+            updateImagePreview();
+            updateVideoPreview();
+        };
+
+        // Export to Excel
+        window.exportToExcel = function() {
+            db.collection("cars").get().then((querySnapshot) => {
+                const data = [];
+                
+                // Add headers
+                data.push([
+                    'Product ID',
+                    'Make',
+                    'Model',
+                    'Year',
+                    'Price (USD)',
+                    'Old Price',
+                    'Discount %',
+                    'Mileage (km)',
+                    'Engine',
+                    'Transmission',
+                    'Fuel Type',
+                    'Steering',
+                    'Featured',
+                    'Created Date',
+                    'Product URL',
+                    'Number of Images',
+                    'Number of Videos'
+                ]);
+                
+                // Add data
+                querySnapshot.forEach((doc) => {
+                    const car = doc.data();
+                    data.push([
+                        car.productId || 'N/A',
+                        car.make || '',
+                        car.model || '',
+                        car.year || '',
+                        car.price || 0,
+                        car.oldPrice || 0,
+                        car.discount || 0,
+                        car.mileage || 0,
+                        car.engine || '',
+                        car.transmission || '',
+                        car.fuelType || '',
+                        car.steering || '',
+                        car.featured ? 'Yes' : 'No',
+                        car.createdAt ? new Date(car.createdAt.seconds * 1000).toLocaleDateString() : '',
+                        `https://${window.location.host}/veltrixa-auto/car-details.html?id=${doc.id}`,
+                        car.images ? car.images.length : 0,
+                        car.videos ? car.videos.length : 0
+                    ]);
+                });
+                
+                // Create workbook
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                XLSX.utils.book_append_sheet(wb, ws, "Inventory");
+                
+                // Download file
+                XLSX.writeFile(wb, `Veltrixa_Inventory_${new Date().toISOString().split('T')[0]}.xlsx`);
+            });
+        };
+
+        // Authentication and other functions remain the same
         if (typeof auth !== 'undefined') {
             auth.onAuthStateChanged((user) => {
                 if (user) {
@@ -215,8 +660,6 @@
                     document.getElementById('admin-panel').style.display = 'none';
                 }
             });
-        } else {
-            document.getElementById('login-section').innerHTML = '<p class="error">Firebase not configured. Please update firebase-config.js</p>';
         }
 
         window.login = function() {
@@ -239,57 +682,15 @@
             document.getElementById('car-id').value = '';
             document.getElementById('form-title').textContent = 'Add New Vehicle';
             document.getElementById('car-form-container').style.display = 'block';
+            generateProductId();
         };
 
         window.hideForm = function() {
             document.getElementById('car-form-container').style.display = 'none';
-        };
-
-        window.saveCar = function(event) {
-            event.preventDefault();
-
-            const carId = document.getElementById('car-id').value;
-            const images = document.getElementById('images').value.split('\n').map(url => url.trim()).filter(url => url !== '');
-            const price = parseInt(document.getElementById('price').value);
-            const oldPrice = parseInt(document.getElementById('old-price').value) || null;
-            const discount = oldPrice ? Math.round(((oldPrice - price) / oldPrice) * 100) : null;
-
-            const carData = {
-                make: document.getElementById('make').value,
-                model: document.getElementById('model').value,
-                year: parseInt(document.getElementById('year').value),
-                price: price,
-                oldPrice: oldPrice,
-                discount: discount,
-                mileage: parseInt(document.getElementById('mileage').value),
-                engine: document.getElementById('engine').value,
-                transmission: document.getElementById('transmission').value,
-                fuelType: document.getElementById('fuel-type').value,
-                steering: document.getElementById('steering').value,
-                description: document.getElementById('description').value,
-                images: images,
-                featured: document.getElementById('featured').checked,
-                updatedAt: new Date()
-            };
-
-            if (carId) {
-                db.collection("cars").doc(carId).update(carData)
-                    .then(() => {
-                        alert('Vehicle updated successfully!');
-                        hideForm();
-                        loadInventory();
-                        loadStats();
-                    });
-            } else {
-                carData.createdAt = new Date();
-                db.collection("cars").add(carData)
-                    .then(() => {
-                        alert('Vehicle added successfully!');
-                        hideForm();
-                        loadInventory();
-                        loadStats();
-                    });
-            }
+            selectedImages = [];
+            selectedVideos = [];
+            updateImagePreview();
+            updateVideoPreview();
         };
 
         function loadInventory() {
@@ -302,8 +703,9 @@
                             <div class="inventory-item">
                                 <img src="${car.images?.[0] || 'https://via.placeholder.com/100x80'}" class="inventory-image">
                                 <div class="inventory-details">
-                                    <h4>${car.make} ${car.model} ${car.year}</h4>
+                                    <h4>${car.productId || 'N/A'} - ${car.make} ${car.model} ${car.year}</h4>
                                     <p>Price: $${car.price?.toLocaleString()}</p>
+                                    <p><small>Images: ${car.images?.length || 0} | Videos: ${car.videos?.length || 0}</small></p>
                                 </div>
                                 <div class="inventory-actions">
                                     <button onclick="editCar('${doc.id}')" class="btn-edit"><i class="fas fa-edit"></i> Edit</button>
@@ -338,12 +740,44 @@
                     document.getElementById('fuel-type').value = car.fuelType || 'Petrol';
                     document.getElementById('steering').value = car.steering || 'Right';
                     document.getElementById('description').value = car.description || '';
-                    document.getElementById('images').value = car.images ? car.images.join('\n') : '';
                     document.getElementById('featured').checked = car.featured || false;
                     
+                    // Load existing images for preview
+                    if (car.images && car.images.length > 0) {
+                        uploadedImageUrls = [...car.images];
+                        const preview = document.getElementById('image-preview');
+                        preview.innerHTML = '';
+                        car.images.forEach((url, index) => {
+                            const item = document.createElement('div');
+                            item.className = 'preview-item';
+                            item.innerHTML = `
+                                <img src="${url}" alt="Image ${index + 1}">
+                                <button type="button" class="remove-btn" onclick="removeExistingImage(${index})">×</button>
+                            `;
+                            preview.appendChild(item);
+                        });
+                    }
+                    
+                    document.getElementById('generated-id').textContent = car.productId || generateProductId();
                     document.getElementById('form-title').textContent = 'Edit Vehicle';
                     document.getElementById('car-form-container').style.display = 'block';
                 }
+            });
+        };
+
+        window.removeExistingImage = function(index) {
+            uploadedImageUrls.splice(index, 1);
+            // Refresh preview
+            const preview = document.getElementById('image-preview');
+            preview.innerHTML = '';
+            uploadedImageUrls.forEach((url, idx) => {
+                const item = document.createElement('div');
+                item.className = 'preview-item';
+                item.innerHTML = `
+                    <img src="${url}" alt="Image ${idx + 1}">
+                    <button type="button" class="remove-btn" onclick="removeExistingImage(${idx})">×</button>
+                `;
+                preview.appendChild(item);
             });
         };
 
@@ -356,7 +790,11 @@
                 });
             }
         };
+
+        // Update product ID when fields change
+        document.getElementById('make').addEventListener('change', generateProductId);
+        document.getElementById('model').addEventListener('change', generateProductId);
+        document.getElementById('year').addEventListener('change', generateProductId);
     </script>
 </body>
-
 </html>
